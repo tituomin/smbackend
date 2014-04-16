@@ -8,11 +8,20 @@ from django.contrib.gis.db.models.fields import GeometryField
 from django.contrib.gis.gdal import CoordTransform
 from modeltranslation.translator import translator, NotRegistered
 from rest_framework import serializers, viewsets
+from rest_framework.exceptions import ParseError
 
 from services.models import *
 from munigeo.models import *
+from munigeo.api import AdministrativeDivisionSerializer, GeoModelSerializer, \
+    GeoModelViewSet
 
-from .geoapi import GeoModelSerializer, srid_to_srs, build_bbox_filter
+all_views = []
+def register_view(klass, name, base_name=None):
+    entry = {'class': klass, 'name': name}
+    if base_name is not None:
+        entry['base_name'] = base_name
+    all_views.append(entry)
+
 
 LANGUAGES = [x[0] for x in settings.LANGUAGES]
 
@@ -77,6 +86,8 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
 
+register_view(OrganizationViewSet, 'organization')
+
 
 class DepartmentSerializer(TranslatedModelSerializer):
     class Meta:
@@ -85,6 +96,8 @@ class DepartmentSerializer(TranslatedModelSerializer):
 class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
+
+register_view(DepartmentViewSet, 'department')
 
 
 class ServiceSerializer(TranslatedModelSerializer, MPTTModelSerializer):
@@ -106,6 +119,9 @@ class ServiceViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.by_ancestor(val)
         return queryset
 
+register_view(ServiceViewSet, 'service')
+
+
 class UnitSerializer(TranslatedModelSerializer, MPTTModelSerializer, GeoModelSerializer):
     class Meta:
         model = Unit
@@ -118,15 +134,10 @@ def make_muni_ocd_id(name, rest=None):
     return s
 
 
-class UnitViewSet(viewsets.ReadOnlyModelViewSet):
+class UnitViewSet(GeoModelViewSet, viewsets.ReadOnlyModelViewSet):
     queryset = Unit.objects.select_related('organization').prefetch_related('services')
     serializer_class = UnitSerializer
     filter_fields = ['services']
-
-    def initial(self, request, *args, **kwargs):
-        super(UnitViewSet, self).initial(request, *args, **kwargs)
-        srid = request.QUERY_PARAMS.get('srid', None)
-        self.srs = srid_to_srs(srid)
 
     def get_serializer_context(self):
         ret = super(UnitViewSet, self).get_serializer_context()
@@ -191,9 +202,75 @@ class UnitViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset
 
-all_resources = {
-    'organization': OrganizationViewSet,
-    'department': DepartmentViewSet,
-    'service': ServiceViewSet,
-    'unit': UnitViewSet,
-}
+register_view(UnitViewSet, 'unit')
+
+from rest_framework.response import Response
+
+class AutoCompleteViewSet(generics.ListAPIView):
+    def get_serializer_context(self):
+        """
+        Extra context provided to the serializer class.
+        """
+        return {
+            'request': self.request,
+            'format': self.format_kwarg,
+            'view': self
+        }
+
+    """
+    def list(self, request, *args, **kwargs):
+        # If the incoming language is not specified, go with the default.
+        lang_code = request.QUERY_PARAMS.get('language', LANGUAGES[0])
+        if lang_code not in LANGUAGES:
+            raise ParseError("Invalid language supplied. Supported languages: %s" %
+                             ','.join(LANGUAGES))
+
+        val = request.QUERY_PARAMS.get('input', '').strip()
+        if not val:
+            raise ParseError("Supply search terms with 'input='")
+
+        self.object_list = []
+
+        # Switch between paginated or standard style responses
+        page = self.paginate_queryset(self.object_list)
+        if page is not None:
+            serializer = self.get_pagination_serializer(page)
+        else:
+            serializer = self.get_serializer(self.object_list, many=True)
+
+        return Response(serializer.data)
+
+    def list(self, request):
+        resp = []
+        context = self.get_serializer_context()
+
+        filter_name = "name_%s__icontains" % lang_code
+        obj_hits = Service.objects.filter(**{filter_name: val})
+        klass = ServiceSerializer
+        for obj in obj_hits[0:5]:
+            ser_obj = klass(obj, context=context).data
+            ser_obj['object_type'] = 'service'
+            resp.append(ser_obj)
+
+        filter_name = "name_%s__icontains" % lang_code
+        obj_hits = Unit.objects.filter(**{filter_name: val})
+        klass = UnitSerializer
+        for obj in obj_hits[0:5]:
+            ser_obj = klass(obj, context=context).data
+            ser_obj['object_type'] = 'unit'
+            resp.append(ser_obj)
+
+        filter_name = "name_%s__icontains" % lang_code
+        ad_types = ['neighborhood', 'district', 'sub-district']
+        obj_hits = AdministrativeDivision.objects.filter(type__type__in=ad_types).\
+            filter(**{filter_name: val})
+        klass = AdministrativeDivisionSerializer
+        for obj in obj_hits[0:5]:
+            ser_obj = klass(obj, context=context).data
+            ser_obj['object_type'] = 'administrative_division'
+            resp.append(ser_obj)
+
+        return Response(resp)
+    """
+
+register_view(AutoCompleteViewSet, 'autocomplete', base_name='autocomplete')

@@ -39,6 +39,7 @@ INSTALLED_APPS = (
     'corsheaders',
     'django_extensions',
     'modeltranslation',
+    'haystack',
 
     'munigeo',
     'services',
@@ -67,6 +68,9 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
+
+# Keep the database connection open for 120s
+CONN_MAX_AGE = 120
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.6/topics/i18n/
@@ -115,6 +119,22 @@ REST_FRAMEWORK = {
     'URL_FIELD_NAME': 'resource_uri',
     'DEFAULT_FILTER_BACKENDS': ('rest_framework.filters.DjangoFilterBackend',)
 }
+
+HAYSTACK_CONNECTIONS = {}
+for lang_code, _ in LANGUAGES:
+    d = {
+        'ENGINE': 'smbackend.multilingual_solr.MultilingualSolrEngine',
+        'URL': 'http://127.0.0.1:8080/smbackend/core_%s' % lang_code,
+        'INCLUDE_SPELLING': True,
+        'TIMEOUT': 60,
+        'BATCH_SIZE': 2000,
+    }
+    if not 'default' in HAYSTACK_CONNECTIONS:
+        HAYSTACK_CONNECTIONS['default'] = d
+    HAYSTACK_CONNECTIONS['default_%s' % lang_code] = d
+
+HAYSTACK_LIMIT_TO_REGISTERED_MODELS = False
+
 
 try:
     from local_settings import *
