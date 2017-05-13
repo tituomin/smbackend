@@ -60,17 +60,18 @@ class UnitIndex(ServiceMapBaseIndex):
     def prepare_services(self, obj):
         return [service.id for service in obj.services.all()]
 
-class ServiceIndex(ServiceMapBaseIndex):
+class OntologyTreeNodeIndex(ServiceMapBaseIndex):
 
     def __init__(self, *args, **kwargs):
         super(*args, **kwargs)
-        self.model = apps.get_model(app_label='services', model_name='Service')
+        self.model = apps.get_model(app_label='services', model_name='OntologyTreeNode')
 
     def get_updated_field(self):
         return 'last_modified_time'
 
     def index_queryset(self, using=None):
-        return self.get_model().objects.filter(identical_to=None)
+        # TODO group by ontologywords, take only one per group
+        return self.get_model().objects.all()
 
     # def prepare(self, obj):
     #     obj.lang_keywords = obj.keywords.filter(language=get_language())
