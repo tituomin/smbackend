@@ -70,8 +70,16 @@ class OntologyTreeNodeIndex(ServiceMapBaseIndex):
         return 'last_modified_time'
 
     def index_queryset(self, using=None):
-        # TODO group by ontologywords, take only one per group
-        return self.get_model().objects.all()
+        manager = self.get_model().objects
+        # Decision: exclude top level tree nodes (where the
+        # ontologyword reference is null); they are too broad and are
+        # not good results for full text queries which are usually
+        # trying to be somewhat specific.
+        ids = set(
+            manager.exclude(ontologyword_reference__isnull=True)
+            .values('ontologyword_reference').annotate(id=models.Min('id'))
+            .values_list('id', flat=True))
+        return manager.filter(id__in=ids)
 
     # def prepare(self, obj):
     #     obj.lang_keywords = obj.keywords.filter(language=get_language())
