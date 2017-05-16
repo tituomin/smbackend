@@ -120,7 +120,7 @@ LEVELS = {
         'type': 'include',  # one of: {'exclude', 'include'}
         # The service ids below are either included or excluded according
         # to the type above.
-        'services': [
+        'treenodes': [
             991,   # health stations
             1097,  # basic education
             2125,  # pre school education
@@ -131,7 +131,7 @@ LEVELS = {
     },
     'customer_service': {
         'type': 'exclude',
-        'services': [
+        'treenodes': [
             2006,  # statues & art
             332,   # wlan hotspots
             530    # parking vending machines

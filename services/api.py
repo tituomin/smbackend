@@ -665,35 +665,35 @@ class UnitViewSet(munigeo_api.GeoModelAPIView, JSONAPIViewSet, viewsets.ReadOnly
             if level != 'all':
                 level_specs = settings.LEVELS.get(level)
 
-        def services_by_ancestors(service_ids):
-            srv_list = set()
-            for srv_id in service_ids:
-                srv_list |= set(OntologyTreeNode.objects.all().by_ancestor(srv_id).values_list('id', flat=True))
-                srv_list.add(int(srv_id))
-            return list(srv_list)
+        def treenodes_by_ancestors(treenode_ids):
+            node_list = set()
+            for node_id in treenode_ids:
+                node_list |= set(OntologyTreeNode.objects.all().by_ancestor(node_id).values_list('id', flat=True))
+                node_list.add(int(node_id))
+            return list(node_list)
 
-        services = filters.get('service', None)
+        treenodes = filters.get('treenode', None)
 
-        service_ids = None
-        if services:
-            services = services.lower()
-            service_ids = services.split(',')
+        treenode_ids = None
+        if treenodes:
+            treenodes = treenodes.lower()
+            treenode_ids = treenodes.split(',')
         elif level_specs:
             if level_specs['type'] == 'include':
-                service_ids = level_specs['services']
-        if service_ids:
-            queryset = queryset.filter(service_tree_nodes__in=services_by_ancestors(service_ids)).distinct()
+                treenode_ids = level_specs['treenodes']
+        if treenode_ids:
+            queryset = queryset.filter(service_tree_nodes__in=treenodes_by_ancestors(treenode_ids)).distinct()
 
-        service_ids = None
-        val = filters.get('exclude_services', None)
+        treenode_ids = None
+        val = filters.get('exclude_treenodes', None)
         if val:
             val = val.lower()
-            service_ids = val.split(',')
+            treenode_ids = val.split(',')
         elif level_specs:
             if level_specs['type'] == 'exclude':
-                service_ids = level_specs['services']
-        if service_ids:
-            queryset = queryset.exclude(services__in=services_by_ancestors(service_ids)).distinct()
+                treenode_ids = level_specs['treenodes']
+        if treenode_ids:
+            queryset = queryset.exclude(service_tree_nodes__in=treenodes_by_ancestors(treenode_ids)).distinct()
 
         if 'division' in filters:
             # Divisions can be specified with form:
