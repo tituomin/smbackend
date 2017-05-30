@@ -317,6 +317,10 @@ def _import_unit(syncher, info, org_syncher, dept_syncher, muni_by_name, boundin
     return obj
 
 
+
+def _import_unit_ontologywords(obj, info):
+
+
 def _import_unit_services(obj, info, count_services, obj_changed, update_fields):
     ontologytreenode_ids = sorted([
         sid for sid in info.get('ontologytree_ids', [])

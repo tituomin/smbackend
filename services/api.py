@@ -438,6 +438,7 @@ class UnitSerializer(TranslatedModelSerializer, munigeo_api.GeoModelSerializer,
     organization = serializers.SerializerMethodField('organization_uuid')
     department = serializers.SerializerMethodField('department_uuid')
     provider_type = serializers.SerializerMethodField()
+    services = OntologyWordSerializer(many=True)
 
     def __init__(self, *args, **kwargs):
         super(UnitSerializer, self).__init__(*args, **kwargs)
